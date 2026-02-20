@@ -11,8 +11,8 @@ class HistoryObserver:
 class AutoSaveObserver(HistoryObserver):
     """Observer that auto-saves the dataframe to a CSV on changes."""
     def update(self, action: str, df: pd.DataFrame):
-        if action in ["add", "clear", "undo", "redo", "save"]:
-            # Ensure the directory exists
+        if action in ["add", "clear", "undo", "redo"]:
+            # Auto-saving behavior
             os.makedirs(os.path.dirname(Config.HISTORY_FILE) or '.', exist_ok=True)
             df.to_csv(Config.HISTORY_FILE, index=False)
 
@@ -23,7 +23,7 @@ class HistoryManager:
         self.df = pd.DataFrame(columns=self.columns)
         self.observers = []
         self.caretaker = HistoryCaretaker()
-        self.load_history()
+        self.load_history() # Auto-load on startup
 
     def add_observer(self, observer: HistoryObserver):
         self.observers.append(observer)
@@ -32,12 +32,26 @@ class HistoryManager:
         for obs in self.observers:
             obs.update(action, self.df)
 
-    def load_history(self):
+    def load_history(self) -> bool:
+        """Explicitly load history from CSV."""
         if os.path.exists(Config.HISTORY_FILE):
             try:
                 self.df = pd.read_csv(Config.HISTORY_FILE)
+                self.caretaker.save_state(self.df) # Reset memento stack on load
+                return True
             except pd.errors.EmptyDataError:
                 self.df = pd.DataFrame(columns=self.columns)
+                return False
+        return False
+
+    def save_history(self) -> bool:
+        """Explicitly save history to CSV."""
+        try:
+            os.makedirs(os.path.dirname(Config.HISTORY_FILE) or '.', exist_ok=True)
+            self.df.to_csv(Config.HISTORY_FILE, index=False)
+            return True
+        except Exception:
+            return False
 
     def add_record(self, operation: str, a: float, b: float, result: float):
         self.caretaker.save_state(self.df)
@@ -50,13 +64,15 @@ class HistoryManager:
         self.df = pd.DataFrame(columns=self.columns)
         self.notify_observers("clear")
 
-    def undo(self):
-        self.df = self.caretaker.undo(self.df)
-        self.notify_observers("undo")
+    def undo(self) -> bool:
+        self.df, success = self.caretaker.undo(self.df)
+        if success: self.notify_observers("undo")
+        return success
 
-    def redo(self):
-        self.df = self.caretaker.redo(self.df)
-        self.notify_observers("redo")
+    def redo(self) -> bool:
+        self.df, success = self.caretaker.redo(self.df)
+        if success: self.notify_observers("redo")
+        return success
 
     def display(self):
         if self.df.empty:
