@@ -19,14 +19,16 @@ class HistoryCaretaker:
         self._undo_stack.append(HistoryMemento(state))
         self._redo_stack.clear() # Clear redo stack when a new action occurs
 
-    def undo(self, current_state: pd.DataFrame) -> pd.DataFrame:
+    def undo(self, current_state: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
         if not self._undo_stack:
-            return current_state
+            return current_state, False # Nothing to undo
+        
         self._redo_stack.append(HistoryMemento(current_state))
-        return self._undo_stack.pop().get_state()
+        return self._undo_stack.pop().get_state(), True
 
-    def redo(self, current_state: pd.DataFrame) -> pd.DataFrame:
+    def redo(self, current_state: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
         if not self._redo_stack:
-            return current_state
+            return current_state, False # Nothing to redo
+            
         self._undo_stack.append(HistoryMemento(current_state))
-        return self._redo_stack.pop().get_state()
+        return self._redo_stack.pop().get_state(), True

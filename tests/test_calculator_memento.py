@@ -3,14 +3,19 @@ import pandas as pd
 from app.calculator_memento import HistoryMemento, HistoryCaretaker
 
 @pytest.mark.parametrize("data", [
-    {'val': [1]},
-    {'val': [1, 2, 3]},
-    {'val': []}
+    {'val': [1]}, {'val': [1, 2, 3]}, {'val': []}
 ])
 def test_memento_state(data):
     df = pd.DataFrame(data)
     memento = HistoryMemento(df)
     assert memento.get_state().equals(df)
+
+def test_memento_deep_copy_protection():
+    """Ensures modifying the current dataframe doesn't ruin the saved memento."""
+    df = pd.DataFrame({'a': [1]})
+    memento = HistoryMemento(df)
+    df.loc[0, 'a'] = 99 # Mutate original
+    assert memento.get_state().iloc[0]['a'] == 1 # Memento remains safe!
 
 @pytest.mark.parametrize("initial_data, next_data", [
     ({'val': [1]}, {'val': [1, 2]}),

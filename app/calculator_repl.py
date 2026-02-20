@@ -18,7 +18,9 @@ class CalculatorFacade:
             strategy = OperationFactory.get_strategy(op_name)
             result = strategy.execute(a, b)
             self.history.add_record(op_name, a, b, result)
-            print(f"  🟢 Result: {result}")
+            display_result = int(result) if result.is_integer() else result
+            print(f"  🟢 Result: {display_result}")
+            
         except CalculatorException as e:
             print(f"  🔴 Error: {e}")
         except Exception as e:
